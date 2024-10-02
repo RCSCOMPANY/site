@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Apprenons les Couleurs! | Let's Learn Colors!</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/confetti-js/0.0.18/confetti.browser.min.js"></script>
+    <style>
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f8ff;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 30px;
+        }
+        .game-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .color-box {
+            height: 100px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.2em;
+            cursor: pointer;
+            transition: transform 0.3s;
+        }
+        .color-box:hover {
+            transform: scale(1.05);
+        }
+        .game-section {
+            margin-bottom: 40px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .score {
+            text-align: center;
+            font-size: 1.2em;
+            margin: 10px 0;
+        }
+        #colorToGuess {
+            font-size: 1.5em;
+            text-align: center;
+            margin: 20px 0;
+        }
+        #drawing-canvas {
+            border: 2px solid #333;
+            border-radius: 10px;
+        }
+        .tab-buttons {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .tab-button {
+            margin: 0 10px;
+            padding: 10px 20px;
+            background-color: #ddd;
+        }
+        .tab-button.active {
+            background-color: #4CAF50;
+        }
+        .game-tab {
+            display: none;
+        }
+        .game-tab.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎨 Apprenons les Couleurs! 🎨</h1>
+    
+    <div class="game-container">
+        <div class="tab-buttons">
+            <button class="tab-button active" onclick="showGame(0)">Apprendre</button>
+            <button class="tab-button" onclick="showGame(1)">Quiz</button>
+            <button class="tab-button" onclick="showGame(2)">Dessin</button>
+            <button class="tab-button" onclick="showGame(3)">Mémoire</button>
+        </div>
+
+        <div class="game-tab active" id="learn">
+            <h2>Cliquez sur les couleurs pour les entendre !</h2>
+            <div class="color-grid" id="colorGrid"></div>
+        </div>
+
+        <div class="game-tab" id="quiz">
+            <h2>Quiz des Couleurs</h2>
+            <p id="colorToGuess"></p>
+            <div class="color-grid" id="quizGrid"></div>
+            <div class="score">Score: <span id="score">0</span></div>
+        </div>
+
+        <div class="game-tab" id="draw">
+            <h2>Dessinez avec les Couleurs!</h2>
+            <div style="text-align: center;">
+                <canvas id="drawing-canvas" width="400" height="300"></canvas>
+                <div style="margin-top: 10px;">
+                    <button onclick="changeColor('red')">Rouge</button>
+                    <button onclick="changeColor('blue')">Bleu</button>
+                    <button onclick="changeColor('green')">Vert</button>
+                    <button onclick="changeColor('yellow')">Jaune</button>
+                    <button onclick="clearCanvas()">Effacer</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="game-tab" id="memory">
+            <h2>Jeu de Mémoire des Couleurs</h2>
+            <div class="color-grid" id="memoryGrid"></div>
+            <button onclick="startMemoryGame()">Commencer</button>
+            <div class="score">Niveau: <span id="memoryLevel">1</span></div>
+        </div>
+    </div>
+
+    <script>
+        const colors = [
+            {french: 'Rouge', hex: '#FF0000'},
+            {french: 'Bleu', hex: '#0000FF'},
+            {french: 'Jaune', hex: '#FFFF00'},
+            {french: 'Vert', hex: '#00FF00'},
+            {french: 'Orange', hex: '#FFA500'},
+            {french: 'Violet', hex: '#8A2BE2'},
+            {french: 'Rose', hex: '#FFC0CB'},
+            {french: 'Marron', hex: '#8B4513'},
+            {french: 'Noir', hex: '#000000'}
+        ];
+
+        let score = 0;
+        let memoryLevel = 1;
+        let memorySequence = [];
+        let playerSequence = [];
+
+        function initializeGames() {
+            createColorGrid();
+            createQuizGrid();
+            initDrawingCanvas();
+            createMemoryGrid();
+        }
+
+        function showGame(index) {
+            document.querySelectorAll('.game-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            
+            document.querySelectorAll('.game-tab')[index].classList.add('active');
+            document.querySelectorAll('.tab-button')[index].classList.add('active');
+        }
+
+        function createColorGrid() {
+            const grid = document.getElementById('colorGrid');
+            colors.forEach(color => {
+                const box = document.createElement('div');
+                box.className = 'color-box';
+                box.style.backgroundColor = color.hex;
+                box.textContent = color.french;
+                box.onclick = () => speak(color.french);
+                grid.appendChild(box);
+            });
+        }
+
+        function speak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'fr-FR';
+            speechSynthesis.speak(utterance);
+        }
+
+        function createQuizGrid() {
+            const grid = document.getElementById('quizGrid');
+            grid.innerHTML = '';
+            colors.forEach(color => {
+                const box = document.createElement('div');
+                box.className = 'color-box';
+                box.style.backgroundColor = color.hex;
+                box.onclick = () => checkAnswer(color.french);
+                grid.appendChild(box);
+            });
+            newQuestion();
+        }
+
+        function newQuestion() {
+            const colorToGuess = colors[Math.floor(Math.random() * colors.length)];
+            document.getElementById('colorToGuess').textContent = `Cliquez sur la couleur: ${colorToGuess.french}`;
+            return colorToGuess.french;
+        }
+
+        function checkAnswer(selectedColor) {
+            const correctColor = document.getElementById('colorToGuess').textContent.split(': ')[1];
+            if (selectedColor === correctColor) {
+                score++;
+                document.getElementById('score').textContent = score;
+                if (typeof confetti !== 'undefined') {
+                    confetti.start();
+                    setTimeout(() => confetti.stop(), 1000);
+                }
+            }
+            newQuestion();
+        }
+
+        let isDrawing = false;
+        let currentColor = 'black';
+        let ctx;
+
+        function initDrawingCanvas() {
+            const canvas = document.getElementById('drawing-canvas');
+            ctx = canvas.getContext('2d');
+            
+            canvas.addEventListener('mousedown', startDrawing);
+            canvas.addEventListener('mousemove', draw);
+            canvas.addEventListener('mouseup', stopDrawing);
+            canvas.addEventListener('mouseout', stopDrawing);
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            draw(e);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const canvas = document.getElementById('drawing-canvas');
+            const rect = canvas.getBoundingClientRect();
+            ctx.lineWidth = 5;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = currentColor;
+
+            ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+        }
+
+        function stopDrawing() {
+            isDrawing = false;
+            ctx.beginPath();
+        }
+
+        function changeColor(color) {
+            currentColor = color;
+        }
+
+        function clearCanvas() {
+            const canvas = document.getElementById('drawing-canvas');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function createMemoryGrid() {
+            const grid = document.getElementById('memoryGrid');
+            grid.innerHTML = '';
+            colors.forEach(color => {
+                const box = document.createElement('div');
+                box.className = 'color-box';
+                box.style.backgroundColor = color.hex;
+                box.setAttribute('data-color', color.french);
+                grid.appendChild(box);
+            });
+        }
+
+        function startMemoryGame() {
+            memorySequence = [];
+            playerSequence = [];
+            memoryLevel = 1;
+            document.getElementById('memoryLevel').textContent = memoryLevel;
+            addToSequence();
+        }
+
+        function addToSequence() {
+            memorySequence.push(colors[Math.floor(Math.random() * colors.length)].french);
+            showSequence();
+        }
+
+        function showSequence() {
+            let i = 0;
+            const interval = setInterval(() => {
+                if (i >= memorySequence.length) {
+                    clearInterval(interval);
+                    enableMemoryGrid();
+                    return;
+                }
+                const colorName = memorySequence[i];
+                const colorBox = document.querySelector(`[data-color="${colorName}"]`);
+                highlightBox(colorBox);
+                i++;
+            }, 1000);
+        }
+
+        function highlightBox(box) {
+            const originalColor = box.style.backgroundColor;
+            box.style.backgroundColor = 'white';
+            setTimeout(() => {
+                box.style.backgroundColor = originalColor;
+            }, 500);
+        }
+
+        function enableMemoryGrid() {
+            const boxes = document.querySelectorAll('#memoryGrid .color-box');
+            boxes.forEach(box => {
+                box.onclick = () => checkMemorySequence(box.getAttribute('data-color'));
+            });
+        }
+
+        function checkMemorySequence(color) {
+            playerSequence.push(color);
+            if (playerSequence[playerSequence.length - 1] !== memorySequence[playerSequence.length - 1]) {
+                alert('Game Over! Essayez encore!');
+                startMemoryGame();
+                return;
+            }
+            if (playerSequence.length === memorySequence.length) {
+                playerSequence = [];
+                memoryLevel++;
+                document.getElementById('memoryLevel').textContent = memoryLevel;
+                setTimeout(addToSequence, 1000);
+            }
+        }
+
+        initializeGames();
+    </script>
+</body>
+</html>
